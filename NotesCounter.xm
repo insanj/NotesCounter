@@ -1,27 +1,7 @@
-#include <UIKit/UIKit.h>
 #import "NCLabel.h"
 
-// Yeah, yeah, I know this isn't true.
-@interface _UICompatibilityTextView : UITextView
-@end 
-
-@interface NoteContentLayer : UIView <UITextViewDelegate>
-@property(copy) _UICompatibilityTextView *textView;
-@end
-
-@interface NotesDisplayController : UIViewController {
-    NoteContentLayer *_contentLayer; 
-}
-
-- (void)noteContentLayerContentDidChange:(id)arg1 updatedTitle:(_Bool)arg2;
-- (UITextView *)contentScrollView;
-@end
-
-@interface NotesDisplayController (NotesCounter)
-- (void)wordCounterMoveUp:(NSNotification *)notification;
-- (void)wordCounterMoveDown:(NSNotification *)notification;
-- (void)wordCounterMove:(NSNotification *)notification;
-@end
+#define NC_UPCOEFF 1.0
+#define NC_DOWNCOEFF 2.0
 
 %hook NotesDisplayController
 
@@ -42,20 +22,18 @@
     }
 
     [self.view addSubview:wordCounter];
-    wordCounter.coeff = 2.0;
+    wordCounter.coeff = NC_DOWNCOEFF;
     wordCounter.center = CGPointMake(self.view.center.x, self.view.frame.size.height - (wordCounter.frame.size.height * wordCounter.coeff));
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveUp:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveDown:) name:UIKeyboardWillHideNotification object:nil];
 }
 
-- (void)noteContentLayerContentDidChange:(id)arg1 updatedTitle:(_Bool)arg2 {
+- (void)noteContentLayerContentDidChange:(NoteContentLayer *)arg1 updatedTitle:(BOOL)arg2 {
     %orig(arg1, arg2);
 
-    UITextView *noteTextView = ((NoteContentLayer *)arg1).textView;
-
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
-    wordCounter.text = [NCLabel wordCountStringFromTextView:noteTextView];
+    wordCounter.text = [NCLabel wordCountStringFromTextView:arg1.textView];
     
     CGRect resizeFrame = wordCounter.frame;
     resizeFrame.size.width = [wordCounter.text boundingRectWithSize:(CGSize){self.view.frame.size.width - 100.0, 50.0} options:NSStringDrawingUsesLineFragmentOrigin attributes:@{ NSFontAttributeName : wordCounter.font} context:nil].size.width + 7.0;
@@ -63,12 +41,12 @@
 }
 
 %new - (void)wordCounterMoveUp:(NSNotification *)notification {
-    ((NCLabel *)[self.view viewWithTag:1337]).coeff = 1.0;
+    ((NCLabel *)[self.view viewWithTag:1337]).coeff = NC_UPCOEFF;
     [self wordCounterMove:notification];
 }
 
 %new - (void)wordCounterMoveDown:(NSNotification *)notification {
-    ((NCLabel *)[self.view viewWithTag:1337]).coeff = 2.0;
+    ((NCLabel *)[self.view viewWithTag:1337]).coeff = NC_DOWNCOEFF;
     [self wordCounterMove:notification];
 }
 
@@ -89,7 +67,7 @@
     [UIView commitAnimations];
 }
 
-- (void)willRotateToInterfaceOrientation:(long long)arg1 duration:(double)arg2 {
+- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)arg1 duration:(NSTimeInterval)arg2 {
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
     if (UIInterfaceOrientationIsLandscape(arg1)) {
         [UIView animateWithDuration:arg2 animations:^(void) {
@@ -100,7 +78,7 @@
     %orig(arg1, arg2);
 }
 
-- (void)didRotateFromInterfaceOrientation:(long long)arg1 {
+- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)arg1 {
     %orig(arg1);
 
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];

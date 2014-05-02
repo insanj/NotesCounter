@@ -1,7 +1,7 @@
 NotesCounter
 =======================
 
-Word counter in Notes.
+Live word counter in Notes. Draws a simple, attractive word counter near the keyboard on all iOS devices. Tap to dim, rotate to hide.
 
 ---------------------------------------
 [Creative Commons Attribution-NonCommercial 3.0 United States License](http://creativecommons.org/licenses/by-nc/3.0/us/) as of 2014:
