@@ -37,17 +37,19 @@
     NCLabel *wordCounter = [[NCLabel alloc] initWithFrame:(CGRect){CGPointZero, (CGSize){wordCountStringSize.width + 7.0,
         wordCountStringSize.height + 10.0}} andFont:currentSystemFont];
     wordCounter.text = currentWordCountString;
-    
+    if (UIInterfaceOrientationIsLandscape(self.interfaceOrientation)) {
+        wordCounter.alpha = 0.0;
+    }
+
     [self.view addSubview:wordCounter];
     wordCounter.coeff = 2.0;
     wordCounter.center = CGPointMake(self.view.center.x, self.view.frame.size.height - (wordCounter.frame.size.height * wordCounter.coeff));
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveUp:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveDown:) name:UIKeyboardWillHideNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterKeyboardFrameChange:) name:UIKeyboardWillChangeFrameNotification object:nil];
 }
 
--(void)noteContentLayerContentDidChange:(id)arg1 updatedTitle:(_Bool)arg2 {
+- (void)noteContentLayerContentDidChange:(id)arg1 updatedTitle:(_Bool)arg2 {
     %orig(arg1, arg2);
 
     UITextView *noteTextView = ((NoteContentLayer *)arg1).textView;
@@ -87,22 +89,31 @@
     [UIView commitAnimations];
 }
 
-%new - (void)wordCounterKeyboardFrameChange:(NSNotification *)notification {
-    NSDictionary *keyboardUserInfo = notification.userInfo;
-    CGRect keyboardEnd = [[keyboardUserInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
+- (void)willRotateToInterfaceOrientation:(long long)arg1 duration:(double)arg2 {
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
-    wordCounter.keyboardEnd = keyboardEnd.origin.y;
+    if (UIInterfaceOrientationIsLandscape(arg1)) {
+        [UIView animateWithDuration:arg2 animations:^(void) {
+            wordCounter.alpha = 0.0;
+        }];
+    }
+
+    %orig(arg1, arg2);
 }
 
--(void)didRotateFromInterfaceOrientation:(long long)arg1 {
+- (void)didRotateFromInterfaceOrientation:(long long)arg1 {
     %orig(arg1);
 
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
+    if (UIInterfaceOrientationIsLandscape(arg1)) {
+        [UIView animateWithDuration:0.1 animations:^(void) {
+            wordCounter.alpha = 0.6;
+        }];
 
-    CGFloat centeredX = self.view.center.x;
-    CGFloat keyboardEnd = self.isEditing ? wordCounter.keyboardEnd : self.view.frame.size.height;
-    CGFloat centeredY = keyboardEnd - (wordCounter.frame.size.height * wordCounter.coeff);
-    wordCounter.center = CGPointMake(centeredX, centeredY);
+        CGFloat centeredX = self.view.center.x;
+        CGFloat keyboardEnd = self.isEditing ? wordCounter.keyboardEnd : self.view.frame.size.height;
+        CGFloat centeredY = keyboardEnd - (wordCounter.frame.size.height * wordCounter.coeff);
+        wordCounter.center = CGPointMake(centeredX, centeredY);
+    }
 }
 
 %end
