@@ -25,8 +25,8 @@
 
 %hook NotesDisplayController
 
-- (void)viewDidLoad {
-    %orig();
+- (void)viewWillAppear:(BOOL)animated {
+    %orig(animated);
 
     UIFont *currentSystemFont = [UIFont fontWithName:@"HelveticaNeue-Light" size:[UIFont systemFontSize]];
     UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
@@ -45,7 +45,7 @@
 }
 
 -(void)noteContentLayerContentDidChange:(id)arg1 updatedTitle:(_Bool)arg2 {
-    %orig();
+    %orig(arg1, arg2);
 
     UITextView *noteTextView = ((NoteContentLayer *)arg1).textView;
 
