@@ -9,6 +9,7 @@
 #import "NCLabel.h"
 
 @implementation NCLabel
+@synthesize keyboardEnd, coeff;
 
 + (NSString *)wordCountStringFromTextView:(UITextView *)textView {
 	NSRegularExpression *wordRegex = [NSRegularExpression regularExpressionWithPattern:@"(\\W|^)*(\\W)" options:NSRegularExpressionCaseInsensitive error:nil];

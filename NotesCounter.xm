@@ -20,7 +20,7 @@
 @interface NotesDisplayController (NotesCounter)
 - (void)wordCounterMoveUp:(NSNotification *)notification;
 - (void)wordCounterMoveDown:(NSNotification *)notification;
-- (void)wordCounterMove:(NSNotification *)notification withCoeff:(CGFloat)coeff;
+- (void)wordCounterMove:(NSNotification *)notification;
 @end
 
 %hook NotesDisplayController
@@ -37,11 +37,14 @@
     NCLabel *wordCounter = [[NCLabel alloc] initWithFrame:(CGRect){CGPointZero, (CGSize){wordCountStringSize.width + 7.0,
         wordCountStringSize.height + 10.0}} andFont:currentSystemFont];
     wordCounter.text = currentWordCountString;
-    [self.view addSubview:wordCounter];
     
-    wordCounter.center = CGPointMake(self.view.center.x, self.view.frame.size.height - (wordCounter.frame.size.height * 2.5));
+    [self.view addSubview:wordCounter];
+    wordCounter.coeff = 2.0;
+    wordCounter.center = CGPointMake(self.view.center.x, self.view.frame.size.height - (wordCounter.frame.size.height * wordCounter.coeff));
+    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveUp:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveDown:) name:UIKeyboardWillHideNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterKeyboardFrameChange:) name:UIKeyboardWillChangeFrameNotification object:nil];
 }
 
 -(void)noteContentLayerContentDidChange:(id)arg1 updatedTitle:(_Bool)arg2 {
@@ -58,14 +61,16 @@
 }
 
 %new - (void)wordCounterMoveUp:(NSNotification *)notification {
-    [self wordCounterMove:notification withCoeff:1.0];
+    ((NCLabel *)[self.view viewWithTag:1337]).coeff = 1.0;
+    [self wordCounterMove:notification];
 }
 
 %new - (void)wordCounterMoveDown:(NSNotification *)notification {
-    [self wordCounterMove:notification withCoeff:2.0];
+    ((NCLabel *)[self.view viewWithTag:1337]).coeff = 2.0;
+    [self wordCounterMove:notification];
 }
 
-%new - (void)wordCounterMove:(NSNotification *)notification withCoeff:(CGFloat)coeff {
+%new - (void)wordCounterMove:(NSNotification *)notification {
     NSDictionary *keyboardUserInfo = notification.userInfo;
     NSTimeInterval keyboardDuration = [[keyboardUserInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] doubleValue];
     UIViewAnimationCurve keyboardCurve = [[keyboardUserInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
@@ -76,9 +81,28 @@
     [UIView setAnimationCurve:keyboardCurve];
     
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
-    wordCounter.center = CGPointMake(self.view.center.x, keyboardEnd.origin.y - (wordCounter.frame.size.height * coeff));
+    wordCounter.keyboardEnd = keyboardEnd.origin.y;
+    wordCounter.center = CGPointMake(self.view.center.x, wordCounter.keyboardEnd - (wordCounter.frame.size.height * wordCounter.coeff));
     
     [UIView commitAnimations];
+}
+
+%new - (void)wordCounterKeyboardFrameChange:(NSNotification *)notification {
+    NSDictionary *keyboardUserInfo = notification.userInfo;
+    CGRect keyboardEnd = [[keyboardUserInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
+    wordCounter.keyboardEnd = keyboardEnd.origin.y;
+}
+
+-(void)didRotateFromInterfaceOrientation:(long long)arg1 {
+    %orig(arg1);
+
+    NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
+
+    CGFloat centeredX = self.view.center.x;
+    CGFloat keyboardEnd = self.isEditing ? wordCounter.keyboardEnd : self.view.frame.size.height;
+    CGFloat centeredY = keyboardEnd - (wordCounter.frame.size.height * wordCounter.coeff);
+    wordCounter.center = CGPointMake(centeredX, centeredY);
 }
 
 %end

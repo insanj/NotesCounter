@@ -10,6 +10,8 @@
 
 @interface NCLabel : UILabel
 
+@property(nonatomic, readwrite) CGFloat keyboardEnd, coeff;
+
 + (NSString *)wordCountStringFromTextView:(UITextView *)textView;
 - (instancetype)initWithFrame:(CGRect)frame andFont:(UIFont *)font;
 
