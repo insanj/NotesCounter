@@ -85,33 +85,33 @@
     
     [UIView commitAnimations];
 }
-/*
+
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)arg1 duration:(NSTimeInterval)arg2 {
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
-    if (UIInterfaceOrientationIsLandscape(arg1)) {
+    /*if (UIInterfaceOrientationIsLandscape(arg1)) {
         [UIView animateWithDuration:arg2 animations:^(void) {
             wordCounter.alpha = 0.0;
         }];
-    }
-
+    }*/
+    wordCounter.alpha = 0.0;
     %orig(arg1, arg2);
 }
-*/
+
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)arg1 {
     %orig(arg1);
 
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
-    /*
-    if (UIInterfaceOrientationIsLandscape(arg1)) {
-        [UIView animateWithDuration:0.1 animations:^(void) {
-            wordCounter.alpha = 0.6;
-        }];
-    */
+    
+    //if (UIInterfaceOrientationIsLandscape(arg1)) {
         wordCounter.coeff = self.isEditing ? NC_UPCOEFF : NC_DOWNCOEFF;
         CGFloat centeredX = self.view.center.x;
         CGFloat keyboardEnd = self.isEditing ? wordCounter.keyboardEnd : self.view.frame.size.height;
         CGFloat centeredY = keyboardEnd - (wordCounter.frame.size.height * wordCounter.coeff);
         wordCounter.center = CGPointMake(centeredX, centeredY);
+
+        [UIView animateWithDuration:0.3 animations:^(void) {
+            wordCounter.alpha = 0.6;
+        }];
    // }
 }
 
