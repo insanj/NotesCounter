@@ -1,4 +1,6 @@
 #include <UIKit/UIKit.h>
+#import "substrate.h"
+#import "NCLabel.h"
 
 // Yeah, yeah, I know this isn't true.
 @interface _UICompatibilityTextView : UITextView

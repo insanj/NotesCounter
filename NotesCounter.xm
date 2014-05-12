@@ -1,4 +1,4 @@
-#import "NCLabel.h"
+#import "NotesCounter.h"
 
 #define NC_UPCOEFF 1.0
 #define NC_DOWNCOEFF 2.0
