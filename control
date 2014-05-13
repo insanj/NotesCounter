@@ -1,6 +1,5 @@
 Package: com.insanj.notescounter
 Name: NotesCounter
-Pre-Depends: firmware (>= 7.0)
 Depends: mobilesubstrate
 Version: 1.1
 Architecture: iphoneos-arm
