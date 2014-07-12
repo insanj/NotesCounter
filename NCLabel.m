@@ -39,15 +39,9 @@ static BOOL counterTypeIsChar;
 		self.font = font;
 		self.textColor = [UIColor colorWithWhite:0.9 alpha:0.9];
 		self.backgroundColor = [UIColor clearColor];//[UIColor colorWithRed:52/255.0 green:53/255.0 blue:46/255.0 alpha:1.0];
-		//self.alpha = 0.6;
-		//self.layer.masksToBounds = YES;
-		//self.layer.cornerRadius = 10.0;
 		if(self.frame.origin.x > 0)self.tag = 13551337;
 		else self.tag = 1337;
 		self.userInteractionEnabled = YES;
-//		UILongPressGestureRecognizer *toggleCounterTypeGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self  action:@selector(toggleCounterType:)];
-//    toggleCounterTypeGesture.minimumPressDuration = 1.0;
-//    [self addGestureRecognizer:toggleCounterTypeGesture];
 	}
 
 	return self;
@@ -60,12 +54,5 @@ static BOOL counterTypeIsChar;
 
 	[super touchesBegan:touches withEvent:event];
 }
-/*
--  (void)toggleCounterType:(UILongPressGestureRecognizer*)sender {
-    if (sender.state == UIGestureRecognizerStateBegan){
-    		//NSLog(@"UIGestureRecognizerStateBegan.");
-				//wordCounter.text = [NCLabel wordCountStringFromTextView:arg1.textView];
 
-    }
-  }*/
 @end
