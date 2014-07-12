@@ -12,7 +12,7 @@
 
 @property(nonatomic, readwrite) CGFloat keyboardEnd, coeff;
 
-+ (NSString *)wordCountStringFromTextView:(UITextView *)textView;
++ (NSString *)wordOrCharCountStringFromTextView:(UITextView *)textView isChar:(BOOL)counterType;
 - (instancetype)initWithFrame:(CGRect)frame andFont:(UIFont *)font;
 
 @end

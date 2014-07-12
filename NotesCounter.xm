@@ -13,25 +13,44 @@
     UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
 
     NSDictionary *attributes = @{ NSFontAttributeName : currentSystemFont };
-    NSAttributedString *currentWordCountString = [[NSAttributedString alloc] initWithString:[NCLabel wordCountStringFromTextView:noteTextView] attributes:attributes];
+    NSAttributedString *currentWordCountString = [[NSAttributedString alloc] initWithString:[NCLabel wordOrCharCountStringFromTextView:noteTextView  isChar:NO] attributes:attributes];
+    NSAttributedString *currentCharCountString = [[NSAttributedString alloc] initWithString:[NCLabel wordOrCharCountStringFromTextView:noteTextView  isChar:YES] attributes:attributes];
     CGSize wordCountStringSize;
+    CGSize charCountStringSize;
 
     // iOS 7
     if([[currentWordCountString string] respondsToSelector:@selector(boundingRectWithSize:options:attributes:context:)]) {
         wordCountStringSize = [currentWordCountString.string boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:attributes context:nil].size;
+        charCountStringSize = [currentCharCountString.string boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:attributes context:nil].size;
+
     }
 
     // iOS 6 and below
     else {
         wordCountStringSize = [currentWordCountString boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size;
-    }
+        charCountStringSize = [currentCharCountString boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size;
 
+    }
+    UIScrollView *counterScrollView = [[UIScrollView alloc]initWithFrame:(CGRect){CGPointZero, CGSizeMake(wordCountStringSize.width + 7.0, wordCountStringSize.height + 10.0)}];
+    counterScrollView.tag = 1337157;
+    counterScrollView.contentSize = CGSizeMake(counterScrollView.frame.size.width*2,counterScrollView.frame.size.height);
     NCLabel *wordCounter = [[NCLabel alloc] initWithFrame:(CGRect){CGPointZero, CGSizeMake(wordCountStringSize.width + 7.0, wordCountStringSize.height + 10.0)} andFont:currentSystemFont];
     wordCounter.text = currentWordCountString.string;
-    [self.view addSubview:wordCounter];
+    NCLabel *charCounter = [[NCLabel alloc] initWithFrame:(CGRect){CGPointMake(counterScrollView.contentSize.width/2,0), CGSizeMake(charCountStringSize.width + 7.0, charCountStringSize.height + 10.0)} andFont:currentSystemFont];
+    charCounter.text = currentCharCountString.string;
+    counterScrollView.backgroundColor = [UIColor colorWithRed:52/255.0 green:53/255.0 blue:46/255.0 alpha:1.0];
+    counterScrollView.alpha = 0.6;
+    counterScrollView.layer.masksToBounds = YES;
+    counterScrollView.layer.cornerRadius = 10.0;
+    counterScrollView.pagingEnabled =YES;
+    counterScrollView.showsHorizontalScrollIndicator = NO;
+    [self.view addSubview:counterScrollView];
+    [counterScrollView addSubview:wordCounter];
+    [counterScrollView addSubview:charCounter];
 
     wordCounter.coeff = NC_DOWNCOEFF;
-    wordCounter.center = CGPointMake(self.view.center.x, self.view.frame.size.height - (wordCounter.frame.size.height * wordCounter.coeff));
+    //wordCounter.center = CGPointMake(self.view.center.x, self.view.frame.size.height - (wordCounter.frame.size.height * wordCounter.coeff));
+    counterScrollView.center = CGPointMake(self.view.center.x, self.view.frame.size.height - (wordCounter.frame.size.height * wordCounter.coeff));
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveUp:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveDown:) name:UIKeyboardWillHideNotification object:nil];
@@ -42,12 +61,21 @@
     %orig(arg1, arg2);
 
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
-    wordCounter.text = [NCLabel wordCountStringFromTextView:arg1.textView];
-    
-    CGRect resizeFrame = wordCounter.frame;
-    NSRange attributesRange = NSMakeRange(0, wordCounter.text.length);
-    resizeFrame.size.width = [wordCounter.text boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:[wordCounter.attributedText attributesAtIndex:0 effectiveRange:&attributesRange] context:nil].size.width + 7.0;
-    wordCounter.frame = resizeFrame;
+    NCLabel *charCounter = (NCLabel *)[self.view viewWithTag:13551337];
+
+
+    charCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:YES];
+    wordCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:NO];
+
+    CGRect resizeFrameWord = wordCounter.frame;
+    CGRect resizeFrameChar = charCounter.frame;
+    NSRange attributesRangeWord = NSMakeRange(0, wordCounter.text.length);
+    NSRange attributesRangeChar = NSMakeRange(0, charCounter.text.length);
+    resizeFrameWord.size.width = [wordCounter.text boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:[wordCounter.attributedText attributesAtIndex:0 effectiveRange:&attributesRangeWord] context:nil].size.width + 7.0;
+    resizeFrameChar.size.width = [charCounter.text boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:[charCounter.attributedText attributesAtIndex:0 effectiveRange:&attributesRangeChar] context:nil].size.width + 7.0;
+    wordCounter.frame = resizeFrameWord;
+    charCounter.frame = resizeFrameChar;
+
 }
 
 // iOS 6
@@ -55,11 +83,19 @@
     %orig(arg1);
 
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
-    wordCounter.text = [NCLabel wordCountStringFromTextView:arg1.textView];
+    NCLabel *charCounter = (NCLabel *)[self.view viewWithTag:13551337];
 
-    CGRect resizeFrame = wordCounter.frame;
-    resizeFrame.size.width = [wordCounter.attributedText boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size.width + 7.0;
-    wordCounter.frame = resizeFrame;
+    //UIScrollView *counterScrollView = (UIScrollView *)[self.view viewWithTag:1337157];
+
+    charCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:YES];
+    wordCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:NO] ;
+
+    CGRect resizeFrameWord = wordCounter.frame;
+    CGRect resizeFrameChar = charCounter.frame;
+    resizeFrameWord.size.width = [wordCounter.attributedText boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size.width + 7.0;
+    resizeFrameChar.size.width = [charCounter.attributedText boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size.width + 7.0;
+    wordCounter.frame = resizeFrameWord;
+    charCounter.frame = resizeFrameChar;
 }
 
 %new - (void)wordCounterMoveUp:(NSNotification *)notification {
@@ -82,11 +118,11 @@
     [UIView beginAnimations:@"wordCounterResizeForKeyboard" context:nil];
     [UIView setAnimationDuration:keyboardDuration];
     [UIView setAnimationCurve:keyboardCurve];
-    
+
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
     wordCounter.keyboardEnd = keyboardEnd.origin.y;
-    wordCounter.center = CGPointMake(self.view.center.x, wordCounter.keyboardEnd - (wordCounter.frame.size.height * wordCounter.coeff));
-    
+    [self.view viewWithTag:1337157].center = CGPointMake(self.view.center.x, wordCounter.keyboardEnd - (wordCounter.frame.size.height * wordCounter.coeff));
+
     [UIView commitAnimations];
 }
 
@@ -102,18 +138,18 @@
 
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
     wordCounter.coeff = self.isEditing ? NC_UPCOEFF : NC_DOWNCOEFF;
-  
+
     CGFloat centeredX = self.view.center.x;
     CGFloat keyboardEnd = self.isEditing ? wordCounter.keyboardEnd : self.view.frame.size.height;
     CGFloat centeredY = keyboardEnd - (wordCounter.frame.size.height * wordCounter.coeff);
-    wordCounter.center = CGPointMake(centeredX, centeredY);
+    [self.view viewWithTag:1337157].center = CGPointMake(centeredX, centeredY);
 
-    CGFloat alpha = wordCounter.alpha;
-    wordCounter.alpha = 0.0;
-    wordCounter.hidden = NO;
+    CGFloat alpha = wordCounter.superview.alpha;
+    wordCounter.superview.alpha = 0.0;
+    wordCounter.superview.hidden = NO;
 
     [UIView animateWithDuration:0.3 animations:^(void) {
-        wordCounter.alpha = alpha;
+        wordCounter.superview.alpha = alpha;
     }];
 }
 
