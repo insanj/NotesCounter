@@ -85,8 +85,6 @@
     NCLabel *wordCounter = (NCLabel *)[self.view viewWithTag:1337];
     NCLabel *charCounter = (NCLabel *)[self.view viewWithTag:13551337];
 
-    //UIScrollView *counterScrollView = (UIScrollView *)[self.view viewWithTag:1337157];
-
     charCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:YES];
     wordCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:NO] ;
 
