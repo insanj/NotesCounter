@@ -8,7 +8,6 @@
 
 #import "NCLabel.h"
 
-static BOOL counterTypeIsChar;
 
 @implementation NCLabel
 @synthesize keyboardEnd, coeff;
@@ -16,7 +15,6 @@ static BOOL counterTypeIsChar;
 + (NSString *)wordOrCharCountStringFromTextView:(UITextView *)textView isChar:(BOOL)counterType{
 	NSRegularExpression *wordRegex = [NSRegularExpression regularExpressionWithPattern:@"(\\W|^)*(\\W)" options:NSRegularExpressionCaseInsensitive error:nil];
 	NSNumber *wordCount = @([wordRegex numberOfMatchesInString:textView.text options:0 range:NSMakeRange(0, textView.text.length)]);
-	counterTypeIsChar = counterType;
 	int charCount = [textView.text length];
 	switch ([[NSNumber numberWithBool:counterType]intValue]) {
 		case 0:
