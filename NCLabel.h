@@ -8,6 +8,8 @@
 
 #import <UIKit/UIKit.h>
 
+static NSInteger KNotesCounterCharCounterTag = 1, KNotesCounterWordCounterTag = 2;
+
 @interface NCLabel : UILabel
 
 @property(nonatomic, readwrite) CGFloat keyboardEnd, coeff;

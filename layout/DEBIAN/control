@@ -1,7 +1,7 @@
 Package: com.insanj.notescounter
 Name: NotesCounter
 Depends: mobilesubstrate
-Version: 1.1
+Version: 1.2
 Architecture: iphoneos-arm
 Description: Live word counter in Notes.
  Draws a simple, attractive word counter near the keyboard on all iOS devices. Tap to dim, rotate to hide.
