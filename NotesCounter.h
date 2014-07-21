@@ -4,14 +4,14 @@
 
 // Yeah, yeah, I know this isn't true.
 @interface _UICompatibilityTextView : UITextView
-@end 
+@end
 
 @interface NoteContentLayer : UIView <UITextViewDelegate>
 @property(copy) _UICompatibilityTextView *textView;
 @end
 
 @interface NotesDisplayController : UIViewController {
-    NoteContentLayer *_contentLayer; 
+    NoteContentLayer *_contentLayer;
 }
 
 - (void)noteContentLayerContentDidChange:(id)arg1 updatedTitle:(_Bool)arg2;
@@ -21,5 +21,5 @@
 @interface NotesDisplayController (NotesCounter)
 - (void)wordCounterMoveUp:(NSNotification *)notification;
 - (void)wordCounterMoveDown:(NSNotification *)notification;
-- (void)wordCounterMove:(NSNotification *)notification;
+- (void)wordCounterMove:(NSNotification *)notification  withCoeff:(CGFloat)coeff;
 @end
