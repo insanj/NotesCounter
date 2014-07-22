@@ -4,7 +4,7 @@ Depends: mobilesubstrate
 Version: 1.2
 Architecture: iphoneos-arm
 Description: Live word counter in Notes.
- Draws a simple, attractive word counter near the keyboard on all iOS devices. Tap to dim, rotate to hide.
+ Draws a simple, attractive word and char counter on all iOS 7 devices. Tap to dim, swipe to switch.
 Maintainer: Julian Weiss <insanjmail@gmail.com>
 Author: Julian (insanj) Weiss
 Section: Tweaks

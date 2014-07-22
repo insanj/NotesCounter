@@ -1,5 +1,5 @@
-#import "substrate.h"
 #import "NCLabel.h"
+#import "substrate.h"
 
 // Yeah, yeah, I know this isn't true.
 @interface _UICompatibilityTextView : UITextView
@@ -23,8 +23,11 @@
 
 @interface NotesDisplayController (NotesCounter)
 
-- (void)wordCounterMoveUp:(NSNotification *)notification;
-- (void)wordCounterMoveDown:(NSNotification *)notification;
-- (void)wordCounterMove:(NSNotification *)notification  withCoeff:(CGFloat)coeff;
+- (void)notesCounterResizeForContents:(NSString *)contents inTextView:(UITextView *)textView;
+- (void)notesCounterSwipeRecognized:(UISwipeGestureRecognizer *)sender;
+- (void)notesCounterUpdateLabelInTextView:(UITextView *)textView;
+
+- (void)notesCounterKeyboardWillShow:(NSNotification *)notification;
+- (void)notesCounterKeyboardWillHide:(NSNotification *)notification;
 
 @end

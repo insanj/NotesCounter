@@ -1,129 +1,107 @@
 #import "NotesCounter.h"
 
-#define NC_UPCOEFF 1.0
-#define NC_DOWNCOEFF 2.1
-#define NC_CONSTRAINT CGSizeMake(self.view.frame.size.width - 100.0, 50.0)
+static NCLabel *notesCounterLabel;
+static CGFloat kNotesCounterOuterBottomPadding = 45.0, kNotesCounterHeight = 30.0;
+static CGFloat kNotesCounterOuterSideMaxCombinedMargin = 20.0;
+static CGFloat kNotesCounterInnerSidePadding = 3.0, kNotesCounterInnerTopPadding = 3.0;
 
-static CGFloat upDownCoeff;
-static UIScrollView *counterScrollView;
+// Margin from bottom of view. Does not include height of view itself, only attachment views beneath.
+static CGFloat kNotesCounterBottomMargin;
 
 %hook NotesDisplayController
 
+// Adds a new notesCounter label, or accessing the existing one (per instance of NotesDisplayController)
+// and uses -notesCounterResizeForContents to resize it appropriately, in word counting mode.
 - (void)viewWillAppear:(BOOL)animated {
     %orig(animated);
 
-    UIFont *currentSystemFont = [UIFont fontWithName:@"HelveticaNeue-Light" size:[UIFont systemFontSize]];
     UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
+    kNotesCounterBottomMargin = 0.0;
 
-    NSDictionary *attributes = @{ NSFontAttributeName : currentSystemFont };
-    NSAttributedString *currentWordCountString = [[NSAttributedString alloc] initWithString:[NCLabel wordOrCharCountStringFromTextView:noteTextView  isChar:NO] attributes:attributes];
-    NSAttributedString *currentCharCountString = [[NSAttributedString alloc] initWithString:[NCLabel wordOrCharCountStringFromTextView:noteTextView  isChar:YES] attributes:attributes];
+    if (!notesCounterLabel) {
+        notesCounterLabel = [[NCLabel alloc] initWithFrame:CGRectZero andFont:[UIFont fontWithName:@"HelveticaNeue-Light" size:[UIFont systemFontSize]]];
+        notesCounterLabel.textInset = UIEdgeInsetsMake(kNotesCounterInnerTopPadding, kNotesCounterInnerSidePadding, kNotesCounterInnerTopPadding, kNotesCounterInnerSidePadding);
+        notesCounterLabel.backgroundColor = [UIColor colorWithRed:52.0/255.0 green:53.0/255.0 blue:46.0/255.0 alpha:1.0];
+        notesCounterLabel.layer.masksToBounds = YES;
+        notesCounterLabel.layer.cornerRadius = 10.0;
+
+        UISwipeGestureRecognizer *swipeSwitchTypeRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(notesCounterSwipeRecognized:)];
+        swipeSwitchTypeRecognizer.direction = UISwipeGestureRecognizerDirectionLeft | UISwipeGestureRecognizerDirectionRight;
+        [notesCounterLabel addGestureRecognizer:swipeSwitchTypeRecognizer];
+        [swipeSwitchTypeRecognizer release];
+
+        [self.view addSubview:notesCounterLabel];
+    }
+
+    notesCounterLabel.alpha = 0.6;
+
+    [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:NO] inTextView:noteTextView];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notesCounterKeyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notesCounterKeyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
+}
+
+// Resizes and sets the text of notesCounter label as respective to frame rules in given textView.
+%new - (void)notesCounterResizeForContents:(NSString *)contents inTextView:(UITextView *)textView {
+    NSDictionary *notesCounterAttributes = @{ NSFontAttributeName : notesCounterLabel.font };
+    NSAttributedString *notesCounterAttributedString = [[NSAttributedString alloc] initWithString:contents attributes:notesCounterAttributes];
    
-    CGSize wordCountStringSize;
-    CGSize charCountStringSize;
+    CGSize notesCounterBoundingRectInLabel = CGSizeMake(textView.frame.size.width - ((kNotesCounterInnerSidePadding * 2.0) + kNotesCounterOuterSideMaxCombinedMargin), kNotesCounterHeight - (kNotesCounterInnerTopPadding * 2.0));
+    CGSize notesCounterStringSize;
 
     // iOS 7
-    if ([[currentWordCountString string] respondsToSelector:@selector(boundingRectWithSize:options:attributes:context:)]) {
-        wordCountStringSize = [currentWordCountString.string boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:attributes context:nil].size;
-        charCountStringSize = [currentCharCountString.string boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:attributes context:nil].size;
+    if ([[notesCounterAttributedString string] respondsToSelector:@selector(boundingRectWithSize:options:attributes:context:)]) {
+        notesCounterStringSize = [[notesCounterAttributedString string] boundingRectWithSize:notesCounterBoundingRectInLabel options:NSStringDrawingUsesLineFragmentOrigin attributes:notesCounterAttributes context:nil].size;
     }
 
     // iOS 6 and below
     else {
-        wordCountStringSize = [currentWordCountString boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size;
-        charCountStringSize = [currentCharCountString boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size;
+        notesCounterStringSize = [notesCounterAttributedString boundingRectWithSize:notesCounterBoundingRectInLabel options:NSStringDrawingUsesLineFragmentOrigin context:nil].size;
     }
 
-    NCLabel *wordCounter, *charCounter;
+    CGFloat viewHeight = UIInterfaceOrientationIsPortrait([UIApplication sharedApplication].statusBarOrientation) ? self.view.frame.size.height - kNotesCounterBottomMargin : self.view.frame.size.width - kNotesCounterBottomMargin;
 
-    if (!counterScrollView) {
-        counterScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0.0, 0.0, wordCountStringSize.width + 7.0, wordCountStringSize.height + 10.0)];
-        counterScrollView.contentSize = CGSizeMake(counterScrollView.frame.size.width * 2.0, counterScrollView.frame.size.height);
-        counterScrollView.backgroundColor = [UIColor colorWithRed:52.0/255.0 green:53.0/255.0 blue:46.0/255.0 alpha:1.0];
-        counterScrollView.alpha = 0.6;
-        counterScrollView.layer.masksToBounds = YES;
-        counterScrollView.layer.cornerRadius = 10.0;
-        counterScrollView.pagingEnabled =YES;
-        counterScrollView.showsHorizontalScrollIndicator = NO;
-       
-        wordCounter = [[NCLabel alloc] initWithFrame:CGRectMake(0.0, 0.0, wordCountStringSize.width + 7.0, wordCountStringSize.height + 10.0) andFont:currentSystemFont];
-       
-        charCounter = [[NCLabel alloc] initWithFrame:CGRectMake(counterScrollView.contentSize.width / 2.0, 0.0, charCountStringSize.width + 7.0, charCountStringSize.height + 10.0) andFont:currentSystemFont];
+    // Center x coordinate will be set later on, all we need to worry about are y, w, h.
+    CGRect notesCounterLabelFrame = CGRectMake(0.0, 0.0, fmin(notesCounterStringSize.width + (kNotesCounterInnerSidePadding * 2.0), textView.frame.size.width - kNotesCounterOuterSideMaxCombinedMargin), kNotesCounterHeight); 
+    notesCounterLabelFrame.origin.y = viewHeight - (kNotesCounterOuterBottomPadding + notesCounterLabelFrame.size.height);
 
-        [self.view addSubview:counterScrollView];
-        [counterScrollView addSubview:wordCounter];
-        [counterScrollView addSubview:charCounter];
+    notesCounterLabel.frame = notesCounterLabelFrame;
+    notesCounterLabel.center = CGPointMake(textView.center.x, notesCounterLabel.center.y);
+
+    notesCounterLabel.text = contents;
+}
+
+// Swaps contents of notesCounter label as per its showingWords property, and resizes the frame accordingly. 
+%new - (void)notesCounterSwipeRecognized:(UISwipeGestureRecognizer *)sender {
+    UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
+    BOOL notesCounterShowingWords = ((notesCounterLabel.showingWords = !notesCounterLabel.showingWords));
+    [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:!notesCounterShowingWords] inTextView:noteTextView];
+}
+
+%new - (void)notesCounterUpdateLabelInTextView:(UITextView *)textView {
+    NSString *notesCounterUpdatedText = [NCLabel wordOrCharCountStringFromTextView:textView isChar:!notesCounterLabel.showingWords];
+    if (notesCounterUpdatedText.length > notesCounterLabel.text.length) {
+        [self notesCounterResizeForContents:notesCounterUpdatedText inTextView:textView];
     }
 
     else {
-        wordCounter = (NCLabel *)[counterScrollView viewWithTag:KNotesCounterWordCounterTag];
-        charCounter = (NCLabel *)[counterScrollView viewWithTag:KNotesCounterCharCounterTag];
+        notesCounterLabel.text = notesCounterUpdatedText;
     }
-
-    wordCounter.text = currentWordCountString.string;
-    charCounter.text = currentCharCountString.string;
-
-    [currentWordCountString release];
-    [currentCharCountString release];
-
-    upDownCoeff = NC_DOWNCOEFF;
-    counterScrollView.center = CGPointMake(self.view.center.x, self.view.frame.size.height - (wordCounter.frame.size.height * upDownCoeff));
-
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveUp:) name:UIKeyboardWillShowNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(wordCounterMoveDown:) name:UIKeyboardWillHideNotification object:nil];
 }
 
 // iOS 7
 - (void)noteContentLayerContentDidChange:(NoteContentLayer *)arg1 updatedTitle:(BOOL)arg2 {
     %orig(arg1, arg2);
-
-    NCLabel *wordCounter = (NCLabel *)[counterScrollView viewWithTag:KNotesCounterWordCounterTag];
-    NCLabel *charCounter = (NCLabel *)[counterScrollView viewWithTag:KNotesCounterCharCounterTag];
-
-    charCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:YES];
-    wordCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:NO];
-
-    CGRect resizeFrameWord = wordCounter.frame;
-    CGRect resizeFrameChar = charCounter.frame;
-   
-    NSRange attributesRangeWord = NSMakeRange(0, wordCounter.text.length);
-    NSRange attributesRangeChar = NSMakeRange(0, charCounter.text.length);
-    resizeFrameWord.size.width = [wordCounter.text boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:[wordCounter.attributedText attributesAtIndex:0 effectiveRange:&attributesRangeWord] context:nil].size.width + 7.0;
-    resizeFrameChar.size.width = [charCounter.text boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin attributes:[charCounter.attributedText attributesAtIndex:0 effectiveRange:&attributesRangeChar] context:nil].size.width + 7.0;
-   
-    wordCounter.frame = resizeFrameWord;
-    charCounter.frame = resizeFrameChar;
+    [self notesCounterUpdateLabelInTextView:arg1.textView];
 }
 
 // iOS 6
 - (void)noteContentLayerContentDidChange:(NoteContentLayer*)arg1 {
     %orig(arg1);
-
-    NCLabel *wordCounter = (NCLabel *)[counterScrollView viewWithTag:KNotesCounterWordCounterTag];
-    NCLabel *charCounter = (NCLabel *)[counterScrollView viewWithTag:KNotesCounterCharCounterTag];
-
-    charCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:YES];
-    wordCounter.text = [NCLabel wordOrCharCountStringFromTextView:arg1.textView isChar:NO] ;
-
-    CGRect resizeFrameWord = wordCounter.frame;
-    CGRect resizeFrameChar = charCounter.frame;
-   
-    resizeFrameWord.size.width = [wordCounter.attributedText boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size.width + 7.0;
-    resizeFrameChar.size.width = [charCounter.attributedText boundingRectWithSize:NC_CONSTRAINT options:NSStringDrawingUsesLineFragmentOrigin context:nil].size.width + 7.0;
-    
-    wordCounter.frame = resizeFrameWord;
-    charCounter.frame = resizeFrameChar;
+    [self notesCounterUpdateLabelInTextView:arg1.textView];
 }
 
-%new - (void)wordCounterMoveUp:(NSNotification *)notification {
-    [self wordCounterMove:notification withCoeff:NC_UPCOEFF];
-}
-
-%new - (void)wordCounterMoveDown:(NSNotification *)notification {
-    [self wordCounterMove:notification withCoeff:NC_DOWNCOEFF];
-}
-
-%new - (void)wordCounterMove:(NSNotification *)notification withCoeff:(CGFloat)coeff{
+%new - (void)notesCounterKeyboardWillShow:(NSNotification *)notification {
     NSDictionary *keyboardUserInfo = notification.userInfo;
     NSTimeInterval keyboardDuration = [[keyboardUserInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] doubleValue];
     UIViewAnimationCurve keyboardCurve = [[keyboardUserInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
@@ -131,45 +109,68 @@ static UIScrollView *counterScrollView;
     CGRect keyboardEnd = [[keyboardUserInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     keyboardEnd = [self.view convertRect:keyboardEnd fromView:nil];
 
+    kNotesCounterBottomMargin = keyboardEnd.origin.y / 2.0;
+    CGFloat viewHeight = UIInterfaceOrientationIsPortrait([UIApplication sharedApplication].statusBarOrientation) ? self.view.frame.size.height - kNotesCounterBottomMargin : self.view.frame.size.width - kNotesCounterBottomMargin;
+
+    CGRect notesCounterLabelFrame = notesCounterLabel.frame;
+    notesCounterLabelFrame.origin.y = viewHeight - (kNotesCounterOuterBottomPadding + notesCounterLabelFrame.size.height);
+
     [UIView beginAnimations:@"wordCounterResizeForKeyboard" context:nil];
     [UIView setAnimationDuration:keyboardDuration];
     [UIView setAnimationCurve:keyboardCurve];
 
-    NCLabel *wordCounter = (NCLabel *)[counterScrollView viewWithTag:KNotesCounterWordCounterTag];
-    wordCounter.keyboardEnd = keyboardEnd.origin.y;
-    counterScrollView.center = CGPointMake(self.view.center.x, wordCounter.keyboardEnd - (wordCounter.frame.size.height * coeff));
+    notesCounterLabel.frame = notesCounterLabelFrame;
 
     [UIView commitAnimations];
 }
 
+%new - (void)notesCounterKeyboardWillHide:(NSNotification *)notification {
+    NSDictionary *keyboardUserInfo = notification.userInfo;
+    NSTimeInterval keyboardDuration = [[keyboardUserInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] doubleValue];
+    UIViewAnimationCurve keyboardCurve = [[keyboardUserInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
+    
+    CGRect keyboardEnd = [[keyboardUserInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    keyboardEnd = [self.view convertRect:keyboardEnd fromView:nil];
+
+    kNotesCounterBottomMargin = 0.0;
+    CGFloat viewHeight = UIInterfaceOrientationIsPortrait([UIApplication sharedApplication].statusBarOrientation) ? self.view.frame.size.height - kNotesCounterBottomMargin : self.view.frame.size.width - kNotesCounterBottomMargin;
+
+    CGRect notesCounterLabelFrame = notesCounterLabel.frame;
+    notesCounterLabelFrame.origin.y = viewHeight - (kNotesCounterOuterBottomPadding + notesCounterLabelFrame.size.height);
+
+    [UIView beginAnimations:@"wordCounterResizeForKeyboard" context:nil];
+    [UIView setAnimationDuration:keyboardDuration];
+    [UIView setAnimationCurve:keyboardCurve];
+
+    notesCounterLabel.frame = notesCounterLabelFrame;
+    
+    [UIView commitAnimations];
+}
+
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)arg1 duration:(NSTimeInterval)arg2 {
-    counterScrollView.hidden = YES;
+    notesCounterLabel.hidden = YES;
     %orig(arg1, arg2);
 }
 
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)arg1 {
     %orig(arg1);
 
-    NCLabel *wordCounter = (NCLabel *)[counterScrollView viewWithTag:KNotesCounterWordCounterTag];
-    upDownCoeff = self.isEditing ? NC_UPCOEFF : NC_DOWNCOEFF;
+    CGFloat alpha = notesCounterLabel.alpha;
 
-    CGFloat centeredX = self.view.center.x;
-    CGFloat keyboardEnd = self.isEditing ? wordCounter.keyboardEnd : self.view.frame.size.height;
-    CGFloat centeredY = keyboardEnd - (wordCounter.frame.size.height * upDownCoeff);
-    counterScrollView.center = CGPointMake(centeredX, centeredY);
+    notesCounterLabel.alpha = 0.0;
+    notesCounterLabel.hidden = NO;
 
-    CGFloat alpha = wordCounter.superview.alpha;
-    wordCounter.superview.alpha = 0.0;
-    wordCounter.superview.hidden = NO;
+    UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
+    [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:!notesCounterLabel.showingWords] inTextView:noteTextView];
 
     [UIView animateWithDuration:0.3 animations:^(void) {
-        wordCounter.superview.alpha = alpha;
+        notesCounterLabel.alpha = alpha;
     }];
 }
 
 - (void)dealloc {
     %orig();
-    [counterScrollView release];
+    [notesCounterLabel release];
 }
 
 %end

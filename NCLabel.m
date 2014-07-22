@@ -8,28 +8,25 @@
 
 #import "NCLabel.h"
 
-
 @implementation NCLabel
-@synthesize keyboardEnd, coeff;
 
 + (NSString *)wordOrCharCountStringFromTextView:(UITextView *)textView isChar:(BOOL)counterType {
-	NSRegularExpression *wordRegex = [NSRegularExpression regularExpressionWithPattern:@"(\\W|^)*(\\W)" options:NSRegularExpressionCaseInsensitive error:nil];
-	NSNumber *wordCount = @([wordRegex numberOfMatchesInString:textView.text options:0 range:NSMakeRange(0, textView.text.length)]);
-	int charCount = [textView.text length];
-
-	if (counterType) {
-		return [NSString stringWithFormat:@"  %@ words", [wordCount descriptionWithLocale:[NSLocale currentLocale]]];
+	if (counterType) { // char count
+		NSString *charCountString = [NSNumberFormatter localizedStringFromNumber:@([textView.text length]) numberStyle:NSNumberFormatterDecimalStyle];
+		return [charCountString stringByAppendingString:@" chars"];
 	}
 
-	else {				
-		return [NSString stringWithFormat:@" %i chars", charCount];
+	else {	// word count
+		NSRegularExpression *wordRegex = [NSRegularExpression regularExpressionWithPattern:@"(\\W|^)*(\\W)" options:NSRegularExpressionCaseInsensitive error:nil];
+		NSUInteger wordCount = [wordRegex numberOfMatchesInString:textView.text options:0 range:NSMakeRange(0, textView.text.length)];
+		NSString *wordCountString = [NSNumberFormatter localizedStringFromNumber:@(wordCount) numberStyle:NSNumberFormatterDecimalStyle];
+		return [wordCountString stringByAppendingString:@" words"];
 	}
-
-	return @"fail";
 }
 
 - (instancetype)initWithFrame:(CGRect)frame andFont:(UIFont *)font{
 	self = [super initWithFrame:frame];
+
 	if (self) {
 		self.textColor = [UIColor colorWithWhite:0.9 alpha:0.9];
 		self.backgroundColor = [UIColor clearColor]; // [UIColor colorWithRed:52/255.0 green:53/255.0 blue:46/255.0 alpha:1.0];
@@ -39,19 +36,24 @@
 		self.textAlignment = NSTextAlignmentLeft;
 		self.numberOfLines = 1;
 	
-		self.tag = self.frame.origin.x > 0 ? KNotesCounterCharCounterTag : KNotesCounterWordCounterTag;
 		self.userInteractionEnabled = YES;
+
+		_textInset = UIEdgeInsetsZero;
+		_showingWords = YES;
 	}
 
 	return self;
 }
 
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
+	[super touchesEnded:touches withEvent:event];
 	[UIView animateWithDuration:0.25 animations:^(void) {
-		self.superview.alpha = fabs(self.superview.alpha - 0.7);
+		self.alpha = fabs(self.alpha - 0.7);
 	}];
+}
 
-	[super touchesBegan:touches withEvent:event];
+- (void)drawTextInRect:(CGRect)rect {
+    [super drawTextInRect:UIEdgeInsetsInsetRect(rect, _textInset)];
 }
 
 @end
