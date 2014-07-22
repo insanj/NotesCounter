@@ -18,11 +18,11 @@ static CGFloat kNotesCounterKeyboardBottomMargin = 2.0;
 %hook NotesDisplayController
 
 - (void)viewWillAppear:(BOOL)animated {
+    %orig();
+
     UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
     [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:NO] inTextView:noteTextView];
     notesCounterLabel.alpha = 0.6;
-
-    %orig();
 }
 
 %end
@@ -35,6 +35,20 @@ static CGFloat kNotesCounterKeyboardBottomMargin = 2.0;
 
 - (void)viewDidAppear:(BOOL)animated {
     %orig();
+
+    // For some reason iOS 6 has issues retaining the gesture recognizer between views in the
+    // same view controller, whereas iOS 7 does it like a champ. This prevents unnecessary
+    // recognizers from existing/firing, while ensuring a valid one is always in place.
+    NSInteger lingeringGestureRecognizers = [notesCounterLabel gestureRecognizers].count;
+    for (int i = 0; i < lingeringGestureRecognizers; i++) {
+        [notesCounterLabel removeGestureRecognizer:[[notesCounterLabel gestureRecognizers] firstObject]];
+    }
+
+    UISwipeGestureRecognizer *replacementSwipeSwitchTypeRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(notesCounterSwipeRecognized:)];
+        
+    replacementSwipeSwitchTypeRecognizer.direction = UISwipeGestureRecognizerDirectionLeft | UISwipeGestureRecognizerDirectionRight;
+    [notesCounterLabel addGestureRecognizer:replacementSwipeSwitchTypeRecognizer];
+    [replacementSwipeSwitchTypeRecognizer release];
 
     UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
     [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:NO] inTextView:noteTextView];
@@ -75,10 +89,11 @@ static CGFloat kNotesCounterKeyboardBottomMargin = 2.0;
     }
 
     else {
-        [notesCounterLabel retain];
+        [[notesCounterLabel retain] autorelease];
         [notesCounterLabel removeFromSuperview];
     }
 
+    notesCounterLabel.alpha = 0.0;
     [self.view addSubview:notesCounterLabel];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notesCounterKeyboardWillChangeFrame:) name:UIKeyboardWillChangeFrameNotification object:nil];
@@ -101,6 +116,7 @@ static CGFloat kNotesCounterKeyboardBottomMargin = 2.0;
     // iOS 6 and below
     else {
         notesCounterStringSize = [notesCounterAttributedString boundingRectWithSize:notesCounterBoundingRectInLabel options:NSStringDrawingUsesLineFragmentOrigin context:nil].size;
+        notesCounterStringSize.width += 2.0; // little bit of leeway since sizing has issues on iOS 6 apprently
     }
 
     CGFloat viewHeight = self.view.frame.size.height - kNotesCounterBottomMargin;
