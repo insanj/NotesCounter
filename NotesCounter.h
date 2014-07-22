@@ -27,7 +27,7 @@
 - (void)notesCounterSwipeRecognized:(UISwipeGestureRecognizer *)sender;
 - (void)notesCounterUpdateLabelInTextView:(UITextView *)textView;
 
-- (void)notesCounterKeyboardWillShow:(NSNotification *)notification;
+- (void)notesCounterKeyboardWillChangeFrame:(NSNotification *)notification;
 - (void)notesCounterKeyboardWillHide:(NSNotification *)notification;
 
 @end

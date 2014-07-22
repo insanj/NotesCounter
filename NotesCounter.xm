@@ -1,12 +1,15 @@
 #import "NotesCounter.h"
 
 static NCLabel *notesCounterLabel;
-static CGFloat kNotesCounterOuterBottomPadding = 45.0, kNotesCounterHeight = 30.0;
+static CGFloat kNotesCounterHeight = 30.0;
 static CGFloat kNotesCounterOuterSideMaxCombinedMargin = 20.0;
 static CGFloat kNotesCounterInnerSidePadding = 3.0, kNotesCounterInnerTopPadding = 3.0;
 
-// Margin from bottom of view. Does not include height of view itself, only attachment views beneath.
+// Margin from bottom of view. Low value (padding) when keyboard resigned, equivalent
+// to keyboard height (plus padding) when keyboard frame exists.
 static CGFloat kNotesCounterBottomMargin;
+static CGFloat kNotesCounterDefaultBottomMargin = 45.0;
+static CGFloat kNotesCounterKeyboardBottomMargin = 2.0;
 
 %hook NotesDisplayController
 
@@ -16,7 +19,7 @@ static CGFloat kNotesCounterBottomMargin;
     %orig(animated);
 
     UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
-    kNotesCounterBottomMargin = 0.0;
+    kNotesCounterBottomMargin = kNotesCounterDefaultBottomMargin;
 
     if (!notesCounterLabel) {
         notesCounterLabel = [[NCLabel alloc] initWithFrame:CGRectZero andFont:[UIFont fontWithName:@"HelveticaNeue-Light" size:[UIFont systemFontSize]]];
@@ -37,7 +40,7 @@ static CGFloat kNotesCounterBottomMargin;
 
     [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:NO] inTextView:noteTextView];
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notesCounterKeyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notesCounterKeyboardWillChangeFrame:) name:UIKeyboardWillChangeFrameNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notesCounterKeyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
 }
 
@@ -63,7 +66,7 @@ static CGFloat kNotesCounterBottomMargin;
 
     // Center x coordinate will be set later on, all we need to worry about are y, w, h.
     CGRect notesCounterLabelFrame = CGRectMake(0.0, 0.0, fmin(notesCounterStringSize.width + (kNotesCounterInnerSidePadding * 2.0), textView.frame.size.width - kNotesCounterOuterSideMaxCombinedMargin), kNotesCounterHeight); 
-    notesCounterLabelFrame.origin.y = viewHeight - (kNotesCounterOuterBottomPadding + notesCounterLabelFrame.size.height);
+    notesCounterLabelFrame.origin.y = viewHeight - (notesCounterLabelFrame.size.height + (kNotesCounterInnerTopPadding * 2.0));
 
     notesCounterLabel.frame = notesCounterLabelFrame;
     notesCounterLabel.center = CGPointMake(textView.center.x, notesCounterLabel.center.y);
@@ -101,7 +104,7 @@ static CGFloat kNotesCounterBottomMargin;
     [self notesCounterUpdateLabelInTextView:arg1.textView];
 }
 
-%new - (void)notesCounterKeyboardWillShow:(NSNotification *)notification {
+%new - (void)notesCounterKeyboardWillChangeFrame:(NSNotification *)notification {
     NSDictionary *keyboardUserInfo = notification.userInfo;
     NSTimeInterval keyboardDuration = [[keyboardUserInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] doubleValue];
     UIViewAnimationCurve keyboardCurve = [[keyboardUserInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
@@ -109,11 +112,11 @@ static CGFloat kNotesCounterBottomMargin;
     CGRect keyboardEnd = [[keyboardUserInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     keyboardEnd = [self.view convertRect:keyboardEnd fromView:nil];
 
-    kNotesCounterBottomMargin = UIInterfaceOrientationIsPortrait([UIApplication sharedApplication].statusBarOrientation) ? keyboardEnd.origin.y / 2.0 : (keyboardEnd.origin.y - kNotesCounterOuterBottomPadding) + (kNotesCounterInnerTopPadding * 2.0);
-    CGFloat viewHeight =  self.view.frame.size.height - kNotesCounterBottomMargin;
+    kNotesCounterBottomMargin = keyboardEnd.size.height + kNotesCounterKeyboardBottomMargin;
+    CGFloat viewHeight = self.view.frame.size.height - kNotesCounterBottomMargin;
 
     CGRect notesCounterLabelFrame = notesCounterLabel.frame;
-    notesCounterLabelFrame.origin.y = viewHeight - (kNotesCounterOuterBottomPadding + notesCounterLabelFrame.size.height);
+    notesCounterLabelFrame.origin.y = viewHeight - (notesCounterLabelFrame.size.height + (kNotesCounterInnerTopPadding * 2.0));
 
     [UIView beginAnimations:@"wordCounterResizeForKeyboard" context:nil];
     [UIView setAnimationDuration:keyboardDuration];
@@ -132,11 +135,11 @@ static CGFloat kNotesCounterBottomMargin;
     CGRect keyboardEnd = [[keyboardUserInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     keyboardEnd = [self.view convertRect:keyboardEnd fromView:nil];
 
-    kNotesCounterBottomMargin = 0.0;
+    kNotesCounterBottomMargin = kNotesCounterDefaultBottomMargin;
     CGFloat viewHeight = self.view.frame.size.height - kNotesCounterBottomMargin;
 
     CGRect notesCounterLabelFrame = notesCounterLabel.frame;
-    notesCounterLabelFrame.origin.y = viewHeight - (kNotesCounterOuterBottomPadding + notesCounterLabelFrame.size.height);
+    notesCounterLabelFrame.origin.y = viewHeight - (notesCounterLabelFrame.size.height + (kNotesCounterInnerTopPadding * 2.0));
 
     [UIView beginAnimations:@"wordCounterResizeForKeyboard" context:nil];
     [UIView setAnimationDuration:keyboardDuration];
