@@ -59,7 +59,7 @@ static CGFloat kNotesCounterBottomMargin;
         notesCounterStringSize = [notesCounterAttributedString boundingRectWithSize:notesCounterBoundingRectInLabel options:NSStringDrawingUsesLineFragmentOrigin context:nil].size;
     }
 
-    CGFloat viewHeight = UIInterfaceOrientationIsPortrait([UIApplication sharedApplication].statusBarOrientation) ? self.view.frame.size.height - kNotesCounterBottomMargin : self.view.frame.size.width - kNotesCounterBottomMargin;
+    CGFloat viewHeight = self.view.frame.size.height - kNotesCounterBottomMargin;
 
     // Center x coordinate will be set later on, all we need to worry about are y, w, h.
     CGRect notesCounterLabelFrame = CGRectMake(0.0, 0.0, fmin(notesCounterStringSize.width + (kNotesCounterInnerSidePadding * 2.0), textView.frame.size.width - kNotesCounterOuterSideMaxCombinedMargin), kNotesCounterHeight); 
@@ -109,8 +109,8 @@ static CGFloat kNotesCounterBottomMargin;
     CGRect keyboardEnd = [[keyboardUserInfo valueForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
     keyboardEnd = [self.view convertRect:keyboardEnd fromView:nil];
 
-    kNotesCounterBottomMargin = keyboardEnd.origin.y / 2.0;
-    CGFloat viewHeight = UIInterfaceOrientationIsPortrait([UIApplication sharedApplication].statusBarOrientation) ? self.view.frame.size.height - kNotesCounterBottomMargin : self.view.frame.size.width - kNotesCounterBottomMargin;
+    kNotesCounterBottomMargin = UIInterfaceOrientationIsPortrait([UIApplication sharedApplication].statusBarOrientation) ? keyboardEnd.origin.y / 2.0 : (keyboardEnd.origin.y - kNotesCounterOuterBottomPadding) + (kNotesCounterInnerTopPadding * 2.0);
+    CGFloat viewHeight =  self.view.frame.size.height - kNotesCounterBottomMargin;
 
     CGRect notesCounterLabelFrame = notesCounterLabel.frame;
     notesCounterLabelFrame.origin.y = viewHeight - (kNotesCounterOuterBottomPadding + notesCounterLabelFrame.size.height);
@@ -133,7 +133,7 @@ static CGFloat kNotesCounterBottomMargin;
     keyboardEnd = [self.view convertRect:keyboardEnd fromView:nil];
 
     kNotesCounterBottomMargin = 0.0;
-    CGFloat viewHeight = UIInterfaceOrientationIsPortrait([UIApplication sharedApplication].statusBarOrientation) ? self.view.frame.size.height - kNotesCounterBottomMargin : self.view.frame.size.width - kNotesCounterBottomMargin;
+    CGFloat viewHeight = self.view.frame.size.height - kNotesCounterBottomMargin;
 
     CGRect notesCounterLabelFrame = notesCounterLabel.frame;
     notesCounterLabelFrame.origin.y = viewHeight - (kNotesCounterOuterBottomPadding + notesCounterLabelFrame.size.height);
