@@ -11,14 +11,53 @@ static CGFloat kNotesCounterBottomMargin;
 static CGFloat kNotesCounterDefaultBottomMargin = 45.0;
 static CGFloat kNotesCounterKeyboardBottomMargin = 2.0;
 
+// This might be excessive, but based on the difference in the way each iOS shows
+// counters, this is optimal for instant updating on both iOS.
+%group Ive
+
+%hook NotesDisplayController
+
+- (void)viewWillAppear:(BOOL)animated {
+    UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
+    [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:NO] inTextView:noteTextView];
+    notesCounterLabel.alpha = 0.6;
+
+    %orig();
+}
+
+%end
+
+%end // %group Ive
+
+%group Forstall
+
+%hook NotesDisplayController
+
+- (void)viewDidAppear:(BOOL)animated {
+    %orig();
+
+    UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
+    [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:NO] inTextView:noteTextView];
+   
+    [UIView animateWithDuration:0.3 animations:^(void) {
+        notesCounterLabel.alpha = 0.6;
+    }];
+}
+
+%end
+
+%end // %group Forstall
+
+// Everything else; all iOS seem to generally agree on Notes structure.
+%group Shared 
+
 %hook NotesDisplayController
 
 // Adds a new notesCounter label, or accessing the existing one (per instance of NotesDisplayController)
 // and uses -notesCounterResizeForContents to resize it appropriately, in word counting mode.
-- (void)viewWillAppear:(BOOL)animated {
-    %orig(animated);
+- (void)viewDidLoad {
+    %orig();
 
-    UITextView *noteTextView = MSHookIvar<NoteContentLayer *>(self, "_contentLayer").textView;
     kNotesCounterBottomMargin = kNotesCounterDefaultBottomMargin;
 
     if (!notesCounterLabel) {
@@ -29,16 +68,18 @@ static CGFloat kNotesCounterKeyboardBottomMargin = 2.0;
         notesCounterLabel.layer.cornerRadius = 10.0;
 
         UISwipeGestureRecognizer *swipeSwitchTypeRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(notesCounterSwipeRecognized:)];
+        
         swipeSwitchTypeRecognizer.direction = UISwipeGestureRecognizerDirectionLeft | UISwipeGestureRecognizerDirectionRight;
         [notesCounterLabel addGestureRecognizer:swipeSwitchTypeRecognizer];
         [swipeSwitchTypeRecognizer release];
-
-        [self.view addSubview:notesCounterLabel];
     }
 
-    notesCounterLabel.alpha = 0.6;
+    else {
+        [notesCounterLabel retain];
+        [notesCounterLabel removeFromSuperview];
+    }
 
-    [self notesCounterResizeForContents:[NCLabel wordOrCharCountStringFromTextView:noteTextView isChar:NO] inTextView:noteTextView];
+    [self.view addSubview:notesCounterLabel];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notesCounterKeyboardWillChangeFrame:) name:UIKeyboardWillChangeFrameNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(notesCounterKeyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
@@ -172,8 +213,21 @@ static CGFloat kNotesCounterKeyboardBottomMargin = 2.0;
 }
 
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     %orig();
-    [notesCounterLabel release];
 }
 
 %end
+
+%end // %group Shared
+
+%ctor {
+    %init(Shared);
+    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 7.0) {
+        %init(Ive);
+    }
+
+    else {
+        %init(Forstall);
+    }
+}
